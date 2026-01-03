@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Asset Weaver - Spider-Man Expo</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕷️</text></svg>">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Orbitron', monospace;
+            background: url('bg.png') no-repeat center center fixed;
+            background-size: cover;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+
+        /* --- LAYAR OVERLAY (START, WIN, LOSE) --- */
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+            transition: opacity 0.5s;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Judul Besar (Start/Game Over) */
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Kelas warna untuk status menang/kalah */
+        .status-win {
+            color: #00ff00;
+            /* Hijau Matrix */
+            text-shadow: 0 0 20px #00ff00;
+        }
+
+        .status-lose {
+            color: #ff3333;
+            /* Merah Error */
+            text-shadow: 0 0 20px red;
+        }
+
+        .status-normal {
+            color: #00d2ff;
+            /* Biru Cyber */
+            text-shadow: 0 0 20px #00d2ff;
+        }
+
+        p {
+            font-size: 1.2rem;
+            color: #00d2ff;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+
+        /* Container Tombol agar rapi */
+        .btn-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .cyber-btn {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-family: 'Orbitron', monospace;
+            font-weight: bold;
+            color: white;
+            background: transparent;
+            border: 2px solid #00d2ff;
+            box-shadow: 0 0 15px #00d2ff;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+
+        .cyber-btn:hover {
+            background: #00d2ff;
+            color: black;
+            box-shadow: 0 0 30px #00d2ff, inset 0 0 10px white;
+            transform: scale(1.1);
+        }
+
+        /* Tombol Sekunder (Ke Beranda) beda warna sedikit */
+        .btn-secondary {
+            border-color: #aaa;
+            box-shadow: 0 0 10px #aaa;
+            color: #aaa;
+        }
+
+        .btn-secondary:hover {
+            background: #aaa;
+            box-shadow: 0 0 20px #aaa;
+            color: black;
+        }
+
+        /* --- UI GAMEPLAY --- */
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            color: #fff;
+            text-shadow: 0 0 5px #00d2ff;
+            font-size: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 5px;
+            border-left: 4px solid #ff3333;
+            display: none;
+        }
+
+        #game-area {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        #bins-container {
+            display: flex;
+            justify-content: space-around;
+            padding-bottom: 40px;
+            padding-top: 20px;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+            border-top: 2px solid rgba(0, 210, 255, 0.3);
+        }
+
+        .bin {
+            width: 100px;
+            height: 100px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 20, 40, 0.6);
+            color: white;
+            transition: transform 0.2s, border-color 0.2s;
+            position: relative;
+        }
+
+        .bin span {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #00d2ff;
+            pointer-events: none;
+        }
+
+        .bin small {
+            font-size: 0.7rem;
+            color: #888;
+            margin-top: 5px;
+            pointer-events: none;
+        }
+
+        .falling-item {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            color: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: grab;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            z-index: 50;
+        }
+
+        .being-dragged {
+            cursor: grabbing;
+            transform: scale(1.2);
+            box-shadow: 0 0 25px rgba(255, 255, 255, 1);
+            z-index: 100;
+        }
+
+        /* Animasi Glitch untuk teks */
+        .glitch-anim {
+            animation: glitch 1s linear infinite;
+        }
+
+        @keyframes glitch {
+
+            2%,
+            64% {
+                transform: translate(2px, 0) skew(0deg);
+            }
+
+            4%,
+            60% {
+                transform: translate(-2px, 0) skew(0deg);
+            }
+
+            62% {
+                transform: translate(0, 0) skew(5deg);
+            }
+        }
+        @media (max-width: 768px) {
+        
+    /* 1. Perkecil jarak antar tombol pada container */
+    .game-over-options {
+        gap: 10px; 
+        width: 100%; /* Pastikan container mengambil lebar penuh yg tersedia */
+        padding: 0 20px; /* Beri sedikit napas di kiri-kanan layar */
+    }
+
+    /* 2. Ubah ukuran tombol agar lebih ramping */
+    .cyb-btn {
+        padding: 10px 15px; /* Kurangi padding (atas-bawah 10px, kiri-kanan 15px) */
+        font-size: 0.85rem; /* Perkecil ukuran font sedikit */
+        min-width: auto;    /* Matikan min-width jika sebelumnya ada */
+        flex: 1;            /* Agar kedua tombol membagi ruang sama rata (50:50) */
+    }
+}
+    </style>
+</head>
+
+<body>
+
+    <div id="start-screen" class="overlay-screen">
+        <h1 class="status-normal">THE ASSET WEAVER</h1>
+        <p>Server sedang diretas! <br>Pisahkan file Multimedia ke tag yang benar.</p>
+        <p style="font-size: 0.9rem; margin-top: 10px; color: #aaa;">Target Misi: 500 Poin</p>
+        <button class="cyber-btn" style="margin-top: 30px;" onclick="initGame()">START MISSION</button>
+    </div>
+
+    <div id="result-screen" class="overlay-screen hidden">
+        <h1 id="result-title" class="glitch-anim">STATUS</h1>
+
+        <p>Skor Akhir Kamu:</p>
+        <h2 id="final-score" style="font-size: 4rem; margin: 10px 0; color: #fff;">0</h2>
+
+        <div class="btn-container">
+            <button class="cyber-btn" onclick="restartGame()">MAIN LAGI</button>
+            <button class="cyber-btn btn-secondary" onclick="goToHome()">KE BERANDA</button>
+        </div>
+    </div>
+
+    <div id="ui-layer">
+        <div>SCORE: <span id="score">0</span> / 500</div>
+        <div>LIVES: <span id="lives">3</span></div>
+    </div>
+
+    <div id="game-area">
+        <div id="bins-container">
+            <div class="bin" id="bin-img">
+                <span>&lt;IMG&gt;</span>
+                <small>.jpg .png</small>
+            </div>
+            <div class="bin" id="bin-audio">
+                <span>&lt;AUDIO&gt;</span>
+                <small>.mp3 .wav</small>
+            </div>
+            <div class="bin" id="bin-video">
+                <span>&lt;VIDEO&gt;</span>
+                <small>.mp4 .avi</small>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- KONFIGURASI & VARIABEL ---
+        const gameArea = document.getElementById('game-area');
+        const scoreElement = document.getElementById('score');
+        const livesElement = document.getElementById('lives');
+        const startScreen = document.getElementById('start-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const resultTitle = document.getElementById('result-title');
+        const finalScoreElement = document.getElementById('final-score');
+        const uiLayer = document.getElementById('ui-layer');
+
+        let audioCtx;
+        const WIN_SCORE = 10;
+
+        const assets = [
+            { label: '.JPG', type: 'img', color: '#e74c3c' },
+            { label: '.PNG', type: 'img', color: '#c0392b' },
+            { label: '.GIF', type: 'img', color: '#d35400' },
+            { label: '.MP3', type: 'audio', color: '#f1c40f' },
+            { label: '.WAV', type: 'audio', color: '#f39c12' },
+            { label: '.MP4', type: 'video', color: '#3498db' },
+            { label: '.AVI', type: 'video', color: '#2980b9' },
+            { label: '.MKV', type: 'video', color: '#8e44ad' }
+        ];
+
+        let score = 0;
+        let lives = 3;
+        let gameInterval;
+        let isGameRunning = false;
+
+        // --- SISTEM AUDIO (Tetap sama) ---
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            // Resume context jika browser memblokir autoplay (terutama di Chrome Mobile)
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'win') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime + 0.1);
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.6);
+            }
+        }
+
+        // --- LOGIKA GAME ---
+        function initGame() {
+            initAudio();
+            startScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+            uiLayer.style.display = 'block';
+
+            score = 0;
+            lives = 3;
+            scoreElement.innerText = score;
+            livesElement.innerText = lives;
+            isGameRunning = true;
+
+            // Spawn lebih lambat sedikit untuk mobile agar tidak panik
+            gameInterval = setInterval(spawnItem, 2000);
+        }
+
+        function spawnItem() {
+            if (!isGameRunning) return;
+
+            const randomAsset = assets[Math.floor(Math.random() * assets.length)];
+            const item = document.createElement('div');
+            item.classList.add('falling-item');
+            item.innerText = randomAsset.label;
+            item.style.backgroundColor = randomAsset.color;
+            item.dataset.type = randomAsset.type;
+
+            // Posisi Random (Aman untuk berbagai lebar layar)
+            // Kurangi 20% width agar tidak terlalu mepet pinggir
+            const maxLeft = gameArea.clientWidth * 0.8;
+            const randomLeft = Math.floor(Math.random() * maxLeft) + (gameArea.clientWidth * 0.05);
+            item.style.left = randomLeft + 'px';
+            item.style.top = '-80px';
+
+            gameArea.appendChild(item);
+
+            let fallSpeed = 2 + (score / 150); // Kecepatan
+            let fallInterval = setInterval(() => {
+                if (!isGameRunning) {
+                    clearInterval(fallInterval);
+                    if (item.parentNode) item.remove();
+                    return;
+                }
+                if (item.classList.contains('being-dragged')) return;
+
+                const currentTop = parseInt(item.style.top);
+                if (currentTop > gameArea.clientHeight) {
+                    clearInterval(fallInterval);
+                    if (item.parentNode) {
+                        item.remove();
+                        playSound('wrong');
+                        updateLives(-1);
+                    }
+                } else {
+                    item.style.top = (currentTop + fallSpeed) + 'px';
+                }
+            }, 20);
+
+            addDragLogic(item);
+        }
+
+        function addDragLogic(item) {
+            const startDrag = (e) => {
+                if (!isGameRunning) return;
+                // e.preventDefault() PENTING di mobile agar tidak scroll halaman
+                if (e.type === 'touchstart') e.preventDefault();
+
+                item.classList.add('being-dragged');
+
+                // Ambil koordinat (Mouse atau Sentuh)
+                const getClientPos = (evt) => {
+                    return evt.touches ? evt.touches[0] : evt;
+                };
+
+                const moveDrag = (moveEvent) => {
+                    if (moveEvent.type === 'touchmove') moveEvent.preventDefault();
+
+                    const pos = getClientPos(moveEvent);
+                    const itemWidth = item.offsetWidth;
+                    const itemHeight = item.offsetHeight;
+
+                    // CENTER POSISITIONING
+                    // Kita kurangi setengah lebar item agar jari ada di tengah item
+                    let x = pos.clientX - (itemWidth / 2);
+
+                    // OFFSET Y (PENTING BUAT MOBILE):
+                    // Kita buat itemnya 50px di ATAS jari, supaya tidak ketutup jempol
+                    let y = pos.clientY - itemHeight - 20;
+
+                    item.style.left = x + 'px';
+                    item.style.top = y + 'px';
+                };
+
+                const endDrag = (endEvent) => {
+                    document.removeEventListener('mousemove', moveDrag);
+                    document.removeEventListener('mouseup', endDrag);
+                    document.removeEventListener('touchmove', moveDrag);
+                    document.removeEventListener('touchend', endDrag);
+
+                    // Pada event touchend, kita tidak punya clientX/Y.
+                    // Jadi kita pakai posisi TERAKHIR item itu sendiri untuk cek tabrakan
+                    checkCollision(item);
+                };
+
+                document.addEventListener('mousemove', moveDrag);
+                document.addEventListener('mouseup', endDrag);
+                document.addEventListener('touchmove', moveDrag, { passive: false });
+                document.addEventListener('touchend', endDrag);
+            };
+
+            item.addEventListener('mousedown', startDrag);
+            item.addEventListener('touchstart', startDrag, { passive: false });
+        }
+
+        function checkCollision(item) {
+            let droppedInBin = false;
+            const bins = [
+                { id: 'bin-img', type: 'img' },
+                { id: 'bin-audio', type: 'audio' },
+                { id: 'bin-video', type: 'video' }
+            ];
+
+            // Dapatkan posisi item saat ini
+            const rect1 = item.getBoundingClientRect();
+
+            bins.forEach(bin => {
+                const binElem = document.getElementById(bin.id);
+                const rect2 = binElem.getBoundingClientRect();
+
+                // Rumus Tabrakan
+                const isColliding = !(rect1.right < rect2.left || rect1.left > rect2.right || rect1.bottom < rect2.top || rect1.top > rect2.bottom);
+
+                if (isColliding) {
+                    droppedInBin = true;
+                    if (item.dataset.type === bin.type) {
+                        // BENAR
+                        score += 10;
+                        scoreElement.innerText = score;
+                        playSound('correct');
+
+                        // Visual
+                        binElem.style.borderColor = '#00ff00';
+                        binElem.style.background = 'rgba(0,255,0,0.2)';
+                        setTimeout(() => {
+                            binElem.style.borderColor = 'rgba(255,255,255,0.3)';
+                            binElem.style.background = 'rgba(0, 20, 40, 0.7)';
+                        }, 200);
+
+                        if (score >= WIN_SCORE) endGame(true);
+
+                    } else {
+                        // SALAH
+                        playSound('wrong');
+                        if (navigator.vibrate) navigator.vibrate(200);
+                        updateLives(-1);
+
+                        binElem.style.borderColor = 'red';
+                        binElem.style.background = 'rgba(255,0,0,0.2)';
+                        setTimeout(() => {
+                            binElem.style.borderColor = 'rgba(255,255,255,0.3)';
+                            binElem.style.background = 'rgba(0, 20, 40, 0.7)';
+                        }, 200);
+                    }
+                    item.remove();
+                }
+            });
+
+            if (!droppedInBin) {
+                item.classList.remove('being-dragged');
+                // Jika dilepas sembarangan, item jatuh lagi ke bawah (opsional, di sini kita biarkan saja jatuh lanjut)
+            }
+        }
+
+        function updateLives(amount) {
+            lives += amount;
+            livesElement.innerText = lives;
+            if (lives <= 0) {
+                endGame(false);
+            }
+        }
+
+        function endGame(isWin) {
+            isGameRunning = false;
+            clearInterval(gameInterval);
+            document.querySelectorAll('.falling-item').forEach(e => e.remove());
+
+            uiLayer.style.display = 'none';
+            resultScreen.classList.remove('hidden');
+            finalScoreElement.innerText = score;
+
+            if (isWin) {
+                resultTitle.innerText = "MISSION SUCCESS";
+                resultTitle.className = "status-win";
+                playSound('win');
+            } else {
+                resultTitle.innerText = "SYSTEM FAILURE";
+                resultTitle.className = "status-lose";
+                playSound('wrong');
+            }
+        }
+
+        function restartGame() {
+            initGame();
+        }
+
+        function goToHome() {
+            resultScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            uiLayer.style.display = 'none';
+        }
+    </script>
+</body>
+
+</html>
